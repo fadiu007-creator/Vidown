@@ -3,6 +3,14 @@ import youtubedl from "yt-dlp-exec";
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
 const PRIVATE_HOSTS = /(^localhost$|^127\.|^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[01])\.|^169\.254\.|\.local$)/i;
 const MAX_URL_LENGTH = 4096;
+const ALLOWED_HOSTS = [
+  "youtube.com", "youtu.be", "youtube-nocookie.com",
+  "tiktok.com", "instagram.com", "facebook.com", "fb.watch",
+  "x.com", "twitter.com", "reddit.com", "redd.it",
+  "pinterest.com", "pin.it", "vimeo.com", "dailymotion.com",
+  "twitch.tv", "streamable.com"
+];
+const requestCounts = new Map();
 
 function sendError(res, status, message, code = "RESOLVE_FAILED") {
   return res.status(status).json({ ok: false, error: { code, message } });
