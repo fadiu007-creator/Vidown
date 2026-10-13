@@ -8,7 +8,7 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         command = [
             sys.executable, "-m", "yt_dlp",
-            "--dump-single-json", "--skip-download", "--no-warnings", "--no-playlist", "--format", "best[height<=720][ext=mp4]/best[height<=720]/best",
+            "--dump-single-json", "--skip-download", "--no-warnings", "--no-playlist", "--format", "best",
             "--socket-timeout", "15", "--retries", "1",
             "--", "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         ]
