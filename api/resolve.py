@@ -101,7 +101,17 @@ class handler(BaseHTTPRequestHandler):
             "--format", fmt, "--", parsed.geturl(),
         ]
         try:
-            result = subprocess.run(command, capture_output=True, text=True, timeout=50, check=False)
+            result = subprocess.run(command, capture_output=True, text=True, timeout=40, check=False)
+            # Some extractors expose formats differently or temporarily reject quality filters.
+            # Retry once with the extractor's default progressive format before returning an error.
+            if result.returncode != 0 and mode == "video" and fmt != "best":
+                fallback_command = [
+                    sys.executable, "-m", "yt_dlp",
+                    "--dump-single-json", "--no-warnings", "--no-playlist",
+                    "--socket-timeout", "15", "--retries", "1", "--extractor-retries", "1",
+                    "--format", "best", "--", parsed.geturl(),
+                ]
+                result = subprocess.run(fallback_command, capture_output=True, text=True, timeout=40, check=False)
             if result.returncode != 0:
                 detail = re.sub(r"\s+", " ", result.stderr or result.stdout or "")[:500].lower()
                 if "unsupported url" in detail:
