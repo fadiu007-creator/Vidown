@@ -10,7 +10,7 @@ class handler(BaseHTTPRequestHandler):
             sys.executable, "-m", "yt_dlp",
             "--dump-single-json", "--skip-download", "--no-warnings", "--no-playlist",
             "--socket-timeout", "15", "--retries", "1",
-            "--", "https://www.youtube.com/watch?v=BaW_jenozKc",
+            "--", "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         ]
         try:
             result = subprocess.run(command, capture_output=True, text=True, timeout=40, check=False)
