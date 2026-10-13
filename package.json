@@ -2,14 +2,5 @@
   "name": "vidown",
   "version": "1.0.0",
   "private": true,
-  "description": "Vidown serverless media resolver",
-  "engines": {
-    "node": "22.x"
-  },
-  "dependencies": {
-    "yt-dlp-exec": "^1.0.2"
-  },
-  "allowScripts": {
-    "yt-dlp-exec@1.0.2": true
-  }
+  "description": "Vidown serverless media resolver"
 }
