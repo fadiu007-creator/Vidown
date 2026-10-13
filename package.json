@@ -1,0 +1,12 @@
+{
+  "name": "vidown",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vidown serverless media resolver",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "yt-dlp-exec": "^1.0.2"
+  }
+}
