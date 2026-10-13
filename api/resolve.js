@@ -31,9 +31,19 @@ export default async function handler(req, res) {
 
   let parsed;
   try { parsed = new URL(rawUrl); } catch { return sendError(res, 400, "The URL is not valid.", "INVALID_URL"); }
-  if (!ALLOWED_PROTOCOLS.has(parsed.protocol) || PRIVATE_HOSTS.test(parsed.hostname) || !parsed.hostname.includes(".")) {
-    return sendError(res, 400, "Only public HTTP/HTTPS links are supported.", "URL_NOT_ALLOWED");
+  const hostname = parsed.hostname.toLowerCase().replace(/^www\\./, "");
+  const allowedHost = ALLOWED_HOSTS.some(host => hostname === host || hostname.endsWith("." + host));
+  if (!ALLOWED_PROTOCOLS.has(parsed.protocol) || PRIVATE_HOSTS.test(parsed.hostname) || !allowedHost) {
+    return sendError(res, 400, "This platform is not on Vidown’s supported public-site list.", "URL_NOT_ALLOWED");
   }
+
+  const clientIp = String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown").split(",")[0].trim();
+  const now = Date.now();
+  const recent = (requestCounts.get(clientIp) || []).filter(t => now - t < 60000);
+  if (recent.length >= 8) return sendError(res, 429, "Too many requests from this connection. Wait one minute and try again.", "RATE_LIMITED");
+  recent.push(now);
+  requestCounts.set(clientIp, recent);
+  if (requestCounts.size > 5000) requestCounts.clear();
 
   const mode = body.mode === "audio" ? "audio" : "video";
   const qualityInput = String(body.quality || "720");
