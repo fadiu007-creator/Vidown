@@ -1,29 +1,37 @@
 # Vidown
 
-A responsive, mobile-friendly video/audio downloader interface for public social-media links.
+A responsive video/audio downloader for public media links.
 
-## Current status
+## Architecture
 
-The GitHub Pages frontend is a static website. It submits URLs to the Cobalt API at `https://api.cobalt.tools/` to resolve downloadable media. The public API may change, rate-limit requests, block browser-origin requests, or require a separately configured instance. Therefore this frontend does **not** guarantee every platform will work at all times.
+- **Frontend:** static `index.html`, published with GitHub Pages.
+- **Backend:** Python serverless functions on Vercel.
+- **Resolver:** `yt-dlp`, installed from `requirements.txt`.
+- **API health:** `/api/health`
+- **Resolve endpoint:** `POST /api/resolve` with JSON `{"url":"https://…","mode":"video","quality":"720"}`.
 
-## Run locally
+The resolver validates supported public domains, limits request size and applies a basic per-instance rate limit. It returns a direct source URL rather than storing or proxying the whole media file, so links can expire and the browser downloads directly from the source. Video formats are selected as single-file/progressive formats where available; the server falls back to the source's default format if a requested quality filter is unavailable.
 
-Open `index.html` in a browser, or serve this directory with any static web server.
+## Deploy
 
-## GitHub Pages
+### Frontend (GitHub Pages)
 
-In the repository, open **Settings → Pages**, choose **Deploy from a branch**, select **main** and **/(root)**, then save. Once GitHub finishes publishing, the site should be available at:
+In the repository, open **Settings → Pages**, select **Deploy from a branch**, choose `main` and `/(root)`, then save. The frontend URL is:
 
 https://fadiu007-creator.github.io/Vidown/
 
-## Platform support
+### Backend (Vercel)
 
-The backend service determines which sites and media types are supported. The interface includes YouTube, TikTok, Instagram, Facebook, X/Twitter, Reddit, Pinterest and other public links. Support is not guaranteed for private/restricted content, login-only posts, DRM-protected streams, or removed media.
+The Vercel project `vidown` is connected to this repository's `main` branch and deploys on commits. The frontend calls the project's public `/api/resolve` endpoint. The health endpoint is available at:
 
-## Production recommendation
+https://vidown-three.vercel.app/api/health
 
-For a reliable public service, run a backend you control and configure a supported media resolver there. Do not put API secrets in browser JavaScript. Add rate limits, request-size limits, abuse protection, timeouts, and safe URL validation; do not expose arbitrary server-side URL fetching that could enable SSRF.
+## Supported sources and limitations
+
+The current allowlist includes YouTube, TikTok, Instagram, Facebook, X/Twitter, Reddit, Pinterest, Vimeo, Dailymotion, Twitch and Streamable. A domain being listed does not guarantee every post or format will work. Sites may change their playback systems, block automated requests, require login, or provide only separate video/audio streams. Private posts, login-only media, DRM-protected streams, removed videos, and paywalled content are not supported. Audio is returned in a source-available audio format; the server does not transcode files to MP3.
+
+Direct media URLs can expire. If a download link stops working, resolve the original post again.
 
 ## Responsible use
 
-Only save media you own or have permission to download. Respect copyright, privacy, and the terms of the relevant platforms. Vidown does not intentionally bypass private posts, paywalls, or DRM.
+Only download content you own or have permission to save. Respect copyright, privacy, and the terms of the relevant platforms. Vidown does not intentionally bypass private posts, paywalls, or DRM.
