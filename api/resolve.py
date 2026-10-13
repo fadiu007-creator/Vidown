@@ -123,8 +123,22 @@ class handler(BaseHTTPRequestHandler):
                         candidates = within_quality
 
             chosen = candidates[0] if candidates else None
+            separate_audio = None
+            separate_streams = False
+            if mode == "video" and not chosen:
+                video_candidates = [item for item in formats if item.get("url") and item.get("vcodec") not in (None, "none")]
+                audio_candidates = [item for item in formats if item.get("url") and item.get("acodec") not in (None, "none") and item.get("vcodec") in (None, "none")]
+                video_candidates.sort(key=lambda item: (int(item.get("height") or 0), float(item.get("tbr") or 0)), reverse=True)
+                if quality != "0":
+                    within_quality = [item for item in video_candidates if not item.get("height") or int(item.get("height") or 0) <= int(quality)]
+                    if within_quality:
+                        video_candidates = within_quality
+                audio_candidates.sort(key=lambda item: float(item.get("abr") or item.get("tbr") or 0), reverse=True)
+                chosen = video_candidates[0] if video_candidates else None
+                separate_audio = audio_candidates[0] if audio_candidates else None
+                separate_streams = bool(chosen and separate_audio)
             if not chosen or not chosen.get("url"):
-                self._send_json(422, {"ok": False, "error": {"code": "NO_COMPATIBLE_FORMAT", "message": "This post does not offer a direct single-file download in the requested mode. Try another link; some sources split video and audio into separate streams."}})
+                self._send_json(422, {"ok": False, "error": {"code": "NO_COMPATIBLE_FORMAT", "message": "No downloadable media was found for this link. Try another public post."}})
                 return
 
             title = info.get("title") or "Vidown media"
@@ -137,6 +151,9 @@ class handler(BaseHTTPRequestHandler):
                 "quality": (f"{chosen.get('height')}p" if chosen.get("height") else (f"{int(chosen.get('abr') or 0)} kbps" if mode == "audio" and chosen.get("abr") else (chosen.get("format_note") or chosen.get("ext") or "Best available"))),
                 "ext": chosen.get("ext") or ("m4a" if mode == "audio" else "mp4"),
                 "downloadUrl": chosen["url"],
+                "audioUrl": separate_audio.get("url") if separate_audio else None,
+                "audioExt": separate_audio.get("ext") if separate_audio else None,
+                "separateStreams": separate_streams,
                 "duration": info.get("duration"),
                 "expiresQuickly": True,
                 "notice": "Source download links can expire. Resolve the post again if needed."
