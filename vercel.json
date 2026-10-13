@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/resolve.js": {
+    "api/resolve.py": {
       "maxDuration": 60
     }
   },
