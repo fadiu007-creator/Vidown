@@ -87,33 +87,16 @@ class handler(BaseHTTPRequestHandler):
         mode = "audio" if body.get("mode") == "audio" else "video"
         quality = str(body.get("quality", "720"))
         quality = quality if quality in ("1080", "720", "480", "360") else "0"
-        if mode == "audio":
-            fmt = "bestaudio/best"
-        elif quality == "0":
-            fmt = "best[ext=mp4]/best"
-        else:
-            fmt = f"best[height<={quality}][ext=mp4]/best[height<={quality}]/best"
-
         command = [
             sys.executable, "-m", "yt_dlp",
-            "--dump-single-json", "--no-warnings", "--no-playlist",
+            "--dump-single-json", "--skip-download", "--no-warnings", "--no-playlist",
             "--socket-timeout", "15", "--retries", "1", "--extractor-retries", "1",
-            "--format", fmt, "--", parsed.geturl(),
+            "--", parsed.geturl(),
         ]
         try:
-            result = subprocess.run(command, capture_output=True, text=True, timeout=40, check=False)
-            # Some extractors expose formats differently or temporarily reject quality filters.
-            # Retry once with the extractor's default progressive format before returning an error.
-            if result.returncode != 0 and mode == "video" and fmt != "best":
-                fallback_command = [
-                    sys.executable, "-m", "yt_dlp",
-                    "--dump-single-json", "--no-warnings", "--no-playlist",
-                    "--socket-timeout", "15", "--retries", "1", "--extractor-retries", "1",
-                    "--format", "best", "--", parsed.geturl(),
-                ]
-                result = subprocess.run(fallback_command, capture_output=True, text=True, timeout=40, check=False)
+            result = subprocess.run(command, capture_output=True, text=True, timeout=50, check=False)
             if result.returncode != 0:
-                detail = re.sub(r"\s+", " ", result.stderr or result.stdout or "")[:500].lower()
+                detail = re.sub(r"\\s+", " ", result.stderr or result.stdout or "")[:500].lower()
                 if "unsupported url" in detail:
                     message, code, status = "This URL type is not supported by the current resolver.", "UNSUPPORTED_URL", 422
                 elif any(word in detail for word in ("private", "login", "sign in", "members-only")):
@@ -126,28 +109,34 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             info = json.loads(result.stdout)
-            media_url = info.get("url")
-            if not media_url and info.get("requested_formats"):
-                # Prefer a progressive format so the browser can download it without server-side merging.
-                for item in info["requested_formats"]:
-                    if item.get("url") and item.get("acodec") not in (None, "none") and item.get("vcodec") not in (None, "none"):
-                        media_url = item["url"]
-                        info["ext"] = item.get("ext", info.get("ext"))
-                        break
-            if not media_url:
-                self._send_json(422, {"ok": False, "error": {"code": "NO_COMPATIBLE_FORMAT", "message": "No single-file download was available for this link. Try another quality or link."}})
+            formats = [item for item in (info.get("formats") or []) if item.get("url")]
+            if mode == "audio":
+                candidates = [item for item in formats if item.get("acodec") not in (None, "none") and item.get("vcodec") in (None, "none")]
+                candidates.sort(key=lambda item: float(item.get("abr") or item.get("tbr") or 0), reverse=True)
+            else:
+                # Prefer progressive formats that already contain both video and audio.
+                candidates = [item for item in formats if item.get("vcodec") not in (None, "none") and item.get("acodec") not in (None, "none")]
+                candidates.sort(key=lambda item: (int(item.get("height") or 0), float(item.get("tbr") or 0)), reverse=True)
+                if quality != "0":
+                    within_quality = [item for item in candidates if not item.get("height") or int(item.get("height") or 0) <= int(quality)]
+                    if within_quality:
+                        candidates = within_quality
+
+            chosen = candidates[0] if candidates else None
+            if not chosen or not chosen.get("url"):
+                self._send_json(422, {"ok": False, "error": {"code": "NO_COMPATIBLE_FORMAT", "message": "This post does not offer a direct single-file download in the requested mode. Try another link; some sources split video and audio into separate streams."}})
                 return
 
             title = info.get("title") or "Vidown media"
-            filename = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", title)[:150]
+            filename = re.sub(r'[\\\\/:*?"<>|\\x00-\\x1f]', "_", title)[:150]
             self._send_json(200, {
                 "ok": True,
                 "title": title,
                 "filename": filename,
                 "mode": mode,
-                "quality": info.get("format") or (f"{info.get('height')}p" if info.get("height") else (info.get("ext") or "Best available")),
-                "ext": info.get("ext") or ("m4a" if mode == "audio" else "mp4"),
-                "downloadUrl": media_url,
+                "quality": (f"{chosen.get('height')}p" if chosen.get("height") else (f"{int(chosen.get('abr') or 0)} kbps" if mode == "audio" and chosen.get("abr") else (chosen.get("format_note") or chosen.get("ext") or "Best available"))),
+                "ext": chosen.get("ext") or ("m4a" if mode == "audio" else "mp4"),
+                "downloadUrl": chosen["url"],
                 "duration": info.get("duration"),
                 "expiresQuickly": True,
                 "notice": "Source download links can expire. Resolve the post again if needed."
