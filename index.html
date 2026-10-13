@@ -32,10 +32,14 @@ const response=await fetch(API_BASE+'/api/resolve',{method:'POST',headers:{'Cont
 let data=null;const responseText=await response.text();try{data=responseText?JSON.parse(responseText):null}catch{}
 if(!response.ok||!data?.ok){const message=data?.error?.message||data?.error?.code||responseText.slice(0,180)||'Unknown backend error';throw new Error(message+' (HTTP '+response.status+')')}
 if(!data.downloadUrl)throw new Error('The resolver did not return a downloadable media link.');
-const a=document.createElement('a');a.href=data.downloadUrl;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Download '+(mode==='audio'?'audio':'video')+' ↗';a.style.display='inline-block';a.style.marginTop='8px';
-const p=document.createElement('p');p.textContent='Ready: '+(data.title||'media')+' · '+(data.quality||data.ext||'file')+'. Tap below to open or save it.';
-const note=document.createElement('p');note.textContent='If the link expires or does not open, press Find media again. Audio is provided in the source’s available audio format.';
-statusBox.className='status show success';statusBox.replaceChildren(p,a,note);}catch(e){show((e.message||'Could not connect to the download service.')+' If this persists, try a different public link or quality.','error')}
+const makeLink=(href,label)=>{const a=document.createElement('a');a.href=href;a.target='_blank';a.rel='noopener noreferrer';a.textContent=label;a.style.display='inline-block';a.style.margin='8px 14px 0 0';return a};
+const p=document.createElement('p');p.textContent='Ready: '+(data.title||'media')+' · '+(data.quality||data.ext||'file')+'.';
+const note=document.createElement('p');
+statusBox.className='status show success';
+if(data.separateStreams&&data.audioUrl){note.textContent='This source provides video and audio separately. Download both files if you need the complete sound and picture; the links may expire.';
+statusBox.replaceChildren(p,makeLink(data.downloadUrl,'Download video (video stream) ↗'),makeLink(data.audioUrl,'Download audio stream ↗'),note)}
+else{note.textContent='If the link expires or does not open, press Find media again. Audio is provided in the source’s available audio format.';
+statusBox.replaceChildren(p,makeLink(data.downloadUrl,'Download '+(mode==='audio'?'audio':'video')+' ↗'),note)}}catch(e){show((e.message||'Could not connect to the download service.')+' If this persists, try a different public link or quality.','error')}
 finally{go.disabled=false;go.textContent='Find media ↗'}}
 go.addEventListener('click',start);urlInput.addEventListener('keydown',e=>{if(e.key==='Enter')start()});
 </script></body></html>
