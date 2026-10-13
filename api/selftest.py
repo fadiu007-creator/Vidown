@@ -8,7 +8,7 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         command = [
             sys.executable, "-m", "yt_dlp",
-            "--dump-single-json", "--skip-download", "--no-warnings", "--no-playlist",
+            "--dump-single-json", "--skip-download", "--no-warnings", "--no-playlist", "--format", "best[height<=720][ext=mp4]/best[height<=720]/best",
             "--socket-timeout", "15", "--retries", "1",
             "--", "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         ]
@@ -25,7 +25,7 @@ class handler(BaseHTTPRequestHandler):
                     "extractor": info.get("extractor_key"),
                     "title": info.get("title"),
                     "formatCount": len(info.get("formats") or []),
-                    "hasDirectUrl": bool(info.get("url")),
+                    "hasDirectUrl": bool(info.get("url")), "requestedFormats": len(info.get("requested_formats") or []), "selectedFormat": info.get("format"),
                 }
                 status = 200 if payload["ok"] else 502
         except Exception as exc:
