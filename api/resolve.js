@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
   let parsed;
   try { parsed = new URL(rawUrl); } catch { return sendError(res, 400, "The URL is not valid.", "INVALID_URL"); }
-  const hostname = parsed.hostname.toLowerCase().replace(/^www\\./, "");
+  const hostname = parsed.hostname.toLowerCase().replace(/^www\./, "");
   const allowedHost = ALLOWED_HOSTS.some(host => hostname === host || hostname.endsWith("." + host));
   if (!ALLOWED_PROTOCOLS.has(parsed.protocol) || PRIVATE_HOSTS.test(parsed.hostname) || !allowedHost) {
     return sendError(res, 400, "This platform is not on Vidown’s supported public-site list.", "URL_NOT_ALLOWED");
