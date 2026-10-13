@@ -4,9 +4,12 @@
   "private": true,
   "description": "Vidown serverless media resolver",
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   },
   "dependencies": {
     "yt-dlp-exec": "^1.0.2"
+  },
+  "allowScripts": {
+    "yt-dlp-exec@1.0.2": true
   }
 }
