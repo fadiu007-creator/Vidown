@@ -28,12 +28,13 @@ async function start(){const raw=urlInput.value.trim();if(!raw){urlInput.focus()
 go.disabled=true;go.textContent='Checking…';show('Contacting the download service…');
 try{
 const response=await fetch('https://api.cobalt.tools/',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({url:parsed.href,downloadMode:mode==='audio'?'audio':'auto',audioFormat:document.querySelector('#audio').value,videoQuality:document.querySelector('#quality').value,filenameStyle:'pretty'})});
-if(!response.ok)throw new Error(response.status===401||response.status===403?'The download service requires authorization or is unavailable. Please try again later.':'The service returned HTTP '+response.status+'. It may be busy or may not support this link.');
-const data=await response.json();
-if(data.status==='error')throw new Error(data.error?.code||'The service could not process this link.');
-let target=data.url||data.tunnel||data.redirect;
-if(!target && data.picker?.length){show('This post has multiple media items. Open the service result to choose the item.');return}
-if(!target)throw new Error('No downloadable file was returned for this link.');
+let data=null;const responseText=await response.text();try{data=responseText?JSON.parse(responseText):null}catch{}
+if(!response.ok){const code=data?.error?.code||data?.code||data?.message||responseText.slice(0,180);if(response.status===400)throw new Error('The download service rejected this request (HTTP 400)'+(code?': '+code:'')+'. The hosted API may not allow third-party websites.');if(response.status===401||response.status===403)throw new Error('The download service denied this request (HTTP '+response.status+'). It may require authorization or block third-party websites.');if(response.status===429)throw new Error('The download service is rate-limiting requests. Wait a little and try again.');throw new Error('The download service returned HTTP '+response.status+(code?': '+code:'')+'.')}
+if(!data)throw new Error('The service returned an empty or invalid response.');
+if(data.status==='error')throw new Error((data.error?.code||'The service could not process this link')+(data.error?.context?.service?' ('+data.error.context.service+')':''));
+if(data.status==='picker'&&Array.isArray(data.picker)&&data.picker.length){const p=document.createElement('p');p.textContent='This post contains multiple media items. Choose an item to open:';statusBox.className='status show';statusBox.replaceChildren(p);data.picker.forEach((item,i)=>{if(!item.url)return;const a=document.createElement('a');a.href=item.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Media '+(i+1)+' ('+(item.type||'file')+')';a.style.display='block';a.style.marginTop='8px';statusBox.append(a)});return}
+const target=data.url||(Array.isArray(data.tunnel)?data.tunnel[0]:data.tunnel)||data.redirect;
+if(!target)throw new Error('The service returned no download link. Response status: '+(data.status||'unknown')+'.');
 const a=document.createElement('a');a.href=target;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open download ↗';const p=document.createElement('p');p.textContent='Your media is ready. Use the link below to open or save it.';statusBox.className='status show success';statusBox.replaceChildren(p,a);
 }catch(e){show((e.message||'Could not connect to the download service.')+' If this persists, the public service may block browser requests or require a configured API instance.','error')}
 finally{go.disabled=false;go.textContent='Find media ↗'}}
